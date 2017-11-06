@@ -112,8 +112,7 @@ module Service
                                  "--DataDirectory #{data_directory}",
                                  "--PidFile #{pid_file}",
                                  "--Log \"warn syslog\"",
-                                 '--RunAsDaemon 1',
-                                 "| logger -t 'tor' 2>&1")
+                                 '--RunAsDaemon 1')
     end
   end
 
