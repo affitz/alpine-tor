@@ -88,7 +88,7 @@ module Service
     attr_reader :circuit_build_timeout
 
     def initialize(port)
-      @port = port
+      @ports = (1..(ENV['tors'] || 20).to_i).to_a.map { |i| port+i-1 }
       @new_circuit_period = ENV['new_circuit_period'] || 120
       @max_circuit_dirtiness = ENV['max_circuit_dirtiness'] || 600
       @circuit_build_timeout = ENV['circuit_build_timeout'] || 60
@@ -97,19 +97,22 @@ module Service
     def data_directory
       "#{super}/#{port}"
     end
+    
+    def ports
+      @ports
+    end
 
     def start
       super
       self.class.fire_and_forget(executable,
-                                 "--SocksPort #{port}",
+                                 @ports.map { |i| "--SocksPort " + i.to_s }.join(" "),
                                  "--NewCircuitPeriod #{new_circuit_period}",
                                  "--MaxCircuitDirtiness #{max_circuit_dirtiness}",
                                  "--CircuitBuildTimeout #{circuit_build_timeout}",
                                  "--DataDirectory #{data_directory}",
                                  "--PidFile #{pid_file}",
                                  "--Log \"warn syslog\"",
-                                 '--RunAsDaemon 1',
-                                 "| logger -t 'tor' 2>&1")
+                                 '--RunAsDaemon 1')
     end
   end
 
@@ -141,8 +144,10 @@ module Service
     def tor_port
       10000 + id
     end
-
-    alias_method :port, :tor_port
+    
+    def ports
+      return @tor.ports
+    end
 
     def test_url
       ENV['test_url'] || 'http://echoip.com/'
@@ -178,20 +183,18 @@ module Service
       super
       compile_config
       self.class.fire_and_forget(executable,
-                                 "-f #{@config_path}",
-                                 "| logger 2>&1")
+                                 "-f #{@config_path}")
     end
 
     def soft_reload
       self.class.fire_and_forget(executable,
                                  "-f #{@config_path}",
                                  "-p #{pid_file}",
-                                 "-sf #{File.read(pid_file)}",
-                                 "| logger 2>&1")
+                                 "-sf #{File.read(pid_file)}")
     end
 
-    def add_backend(backend)
-      @backends << {:name => 'tor', :addr => '127.0.0.1', :port => backend.port}
+    def add_backend(port)
+      @backends << {:name => 'tor', :addr => '127.0.0.1', :port => port}
     end
 
     private
@@ -213,7 +216,7 @@ module Service
     def start
       super
       compile_config
-      self.class.fire_and_forget(executable, "--no-daemon", "#{@config_path}", "| logger 2>&1")
+      self.class.fire_and_forget(executable, "--no-daemon", "#{@config_path}")
     end
 
     private
@@ -225,15 +228,12 @@ end
 
 
 haproxy = Service::Haproxy.new
-proxies = []
 
-tor_instances = ENV['tors'] || 20
-tor_instances.to_i.times.each do |id|
-  proxy = Service::Proxy.new(id)
-  haproxy.add_backend(proxy)
-  proxy.start
-  proxies << proxy
+proxy = Service::Proxy.new(1)
+proxy.ports.each do |port|
+  haproxy.add_backend(port)
 end
+proxy.start
 
 haproxy.start
 
@@ -245,14 +245,8 @@ end
 sleep 60
 
 loop do
-  $logger.info "testing proxies"
-  proxies.each do |proxy|
-    $logger.info "testing proxy #{proxy.id} (port #{proxy.port})"
-    proxy.restart unless proxy.working?
-    $logger.info "sleeping for #{tor_instances} seconds"
-    sleep Integer(tor_instances)
-  end
-
+  $logger.info "testing proxy"
+  proxy.restart unless proxy.working?
   $logger.info "sleeping for 60 seconds"
   sleep 60
 end
