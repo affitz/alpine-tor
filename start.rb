@@ -112,7 +112,8 @@ module Service
                                  "--DataDirectory #{data_directory}",
                                  "--PidFile #{pid_file}",
                                  "--Log \"warn syslog\"",
-                                 '--RunAsDaemon 1')
+                                 '--RunAsDaemon 1',
+                                 "| logger -t 'tor' 2>&1")
     end
   end
 
@@ -229,7 +230,7 @@ end
 
 haproxy = Service::Haproxy.new
 
-proxy = Service::Proxy.new(1)
+proxy = Service::Proxy.new(1)       
 proxy.ports.each do |port|
   haproxy.add_backend(port)
 end
