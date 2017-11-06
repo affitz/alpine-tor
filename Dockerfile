@@ -14,7 +14,9 @@ ADD privoxy.cfg.erb /usr/local/etc/privoxy.cfg.erb
 
 ADD start.rb /usr/local/bin/start.rb
 RUN chmod +x /usr/local/bin/start.rb
+RUN chown tor /var/run/tor
 
 EXPOSE 2090 8118 5566
 
+USER tor
 CMD ruby /usr/local/bin/start.rb
