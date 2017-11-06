@@ -17,4 +17,5 @@ RUN chmod +x /usr/local/bin/start.rb
 
 EXPOSE 2090 8118 5566
 
+USER tor
 CMD ruby /usr/local/bin/start.rb
