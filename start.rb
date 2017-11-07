@@ -109,7 +109,6 @@ module Service
                                  "--NewCircuitPeriod #{new_circuit_period}",
                                  "--MaxCircuitDirtiness #{max_circuit_dirtiness}",
                                  "--CircuitBuildTimeout #{circuit_build_timeout}",
-                                 "--DataDirectory #{data_directory}",
                                  "--PidFile #{pid_file}",
                                  "--Log \"warn syslog\"",
                                  '--RunAsDaemon 1')
